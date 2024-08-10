@@ -1,5 +1,8 @@
-﻿using GamePlay;
+﻿using BaCon;
+using GamePlay;
+using GamePlay.View;
 using GameRoot;
+using MainMenu.View;
 using R3;
 using UnityEngine;
 
@@ -9,8 +12,15 @@ namespace MainMenu
     {
         [SerializeField] private UIMainMenuRootBinder _sceneUIRootPrefap;
 
-        public Observable<MainMenuExitParams> Run(UIViewRoot uiRoot, MainMenuEnterParams enterParams)
+        public Observable<MainMenuExitParams> Run(DIContainer container, MainMenuEnterParams enterParams)
         {
+            MainMenuRegistations.Register(container, enterParams);
+            var mainMenuViewModelsContainer = new DIContainer(container);
+            MainMenuViewModelsRegistrations.Register(mainMenuViewModelsContainer);
+
+            mainMenuViewModelsContainer.Resolve<UIMainMenuRootViewModel>();
+
+            var uiRoot = container.Resolve<UIViewRoot>();
             var uiScene = Instantiate(_sceneUIRootPrefap);
             uiRoot.AttachSceneUI(uiScene.gameObject);
 

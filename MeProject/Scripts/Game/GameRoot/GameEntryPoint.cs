@@ -5,6 +5,8 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using Utils;
 using R3;
+using BaCon;
+using GameRoot.Services;
 
 namespace GameRoot
 {
@@ -13,6 +15,8 @@ namespace GameRoot
         private static GameEntryPoint _instance;
         private Coroutines _coroutines;
         private UIViewRoot _uiRoot;
+        private readonly DIContainer _rootContainer = new();
+        private DIContainer _cachedSceneContainer;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         public static void AutoStartGame()
@@ -32,6 +36,9 @@ namespace GameRoot
             var prefapUIRoot = Resources.Load<UIViewRoot>("UIRoot");
             _uiRoot = Object.Instantiate(prefapUIRoot);
             Object.DontDestroyOnLoad(_uiRoot.gameObject);
+            _rootContainer.RegisterInstance(_uiRoot);
+
+            _rootContainer.RegisterFactory(C => new SomeCommonService()).AsSingle();
         }
 
         private void RunGame()
@@ -64,6 +71,7 @@ namespace GameRoot
         private IEnumerator LoadAndStartGamePlay(GameplayEnterParams enterParams)
         {
             _uiRoot.ShowLoadingScreen();
+            _cachedSceneContainer?.Dispose();
 
             yield return LoadScene(Scenes.BOOT);
             yield return LoadScene(Scenes.GAMEPLAY);
@@ -71,8 +79,9 @@ namespace GameRoot
             yield return new WaitForSeconds(1f);
 
             var sceneEntryPoint = Object.FindObjectOfType<GamePlayEntryPoint>();
+            var gamePlayContainer = _cachedSceneContainer = new DIContainer(_rootContainer);
 
-            sceneEntryPoint.Run(_uiRoot, enterParams).Subscribe(gameplayEnterParams => 
+            sceneEntryPoint.Run(gamePlayContainer, enterParams).Subscribe(gameplayEnterParams => 
             {
                 _coroutines.StartCoroutine(LoadAndStartMainMenu(gameplayEnterParams.MainMenuEnterParams));
             });
@@ -83,6 +92,7 @@ namespace GameRoot
         private IEnumerator LoadAndStartMainMenu(MainMenuEnterParams enterParams = null)
         {
             _uiRoot.ShowLoadingScreen();
+            _cachedSceneContainer?.Dispose();
 
             yield return LoadScene(Scenes.BOOT);
             yield return LoadScene(Scenes.MAINMENU);
@@ -90,7 +100,8 @@ namespace GameRoot
             yield return new WaitForSeconds(1f);
 
             var sceneEntryPoint = Object.FindObjectOfType<MainMenuEntryPoint>();
-            sceneEntryPoint.Run(_uiRoot, enterParams).Subscribe(mainMenuExitParams =>
+            var mainMenuContainer = _cachedSceneContainer = new DIContainer(_rootContainer);
+            sceneEntryPoint.Run(mainMenuContainer, enterParams).Subscribe(mainMenuExitParams =>
             {
                 var targetSceneName = mainMenuExitParams.TargetSceneEnterParams.SceneName;
 

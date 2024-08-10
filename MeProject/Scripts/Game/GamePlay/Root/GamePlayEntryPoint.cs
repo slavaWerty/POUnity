@@ -1,4 +1,6 @@
-﻿using GameRoot;
+﻿using BaCon;
+using GamePlay.View;
+using GameRoot;
 using MainMenu;
 using R3;
 using UnityEngine;
@@ -9,8 +11,16 @@ namespace GamePlay
     {
         [SerializeField] private UIGameplayRootBinder _sceneUIRootPrefap;
 
-        public Observable<GameplayExitParams> Run(UIViewRoot uiRoot, GameplayEnterParams enterParams)
+        public Observable<GameplayExitParams> Run(DIContainer container, GameplayEnterParams enterParams)
         {
+            GamePlayRegistrations.Regiter(container, enterParams);
+            var gameplayViewModelsContainer = new DIContainer(container);
+            GameplayViewModelsRegistrations.Register(gameplayViewModelsContainer);
+
+            gameplayViewModelsContainer.Resolve<UIGameplayRootViewModel>();
+            gameplayViewModelsContainer.Resolve<WorldGameplayRootViewModel>();
+
+            var uiRoot = container.Resolve<UIViewRoot>();
             var uiScene = Instantiate(_sceneUIRootPrefap);
             uiRoot.AttachSceneUI(uiScene.gameObject);
 
